@@ -1,5 +1,24 @@
 # Subdrill
 
+## Login isolado por aplicação
+
+Este repositório contém diretamente os arquivos que devem ser publicados dentro de
+`public_html/subdrill/`; ele **não** cria nem versiona a pasta `public_html/`.
+Copie `.env.example` para o `.env` já existente nesse diretório e configure:
+
+```env
+APP_SESSION_NAME=subdrill_session
+APP_BASE_PATH=/subdrill
+```
+
+`APP_SESSION_NAME` precisa ser único para cada sistema no mesmo domínio (por
+exemplo, `outroapp_session` no OutroApp). Além disso, o cookie é enviado somente
+para `APP_BASE_PATH/`, impedindo que uma sessão em `/subdrill/` substitua ou leia a
+sessão de `/outroapp/`. O `.env` continua ignorado pelo Git.
+
+Importe `database/schema.sql` antes de cadastrar o primeiro usuário. Para criar
+uma senha segura, gere o hash no servidor: `php -r "echo password_hash('sua-senha', PASSWORD_DEFAULT), PHP_EOL;"`.
+
 Aplicação web baseada em **PHP + JavaScript + HTML + MySQL**, utilizando uma arquitetura **MPA (Multi-Page Application)** com **Front Controller**, **Routing/Dispatcher** e **App Shell com Sidebar persistente**.
 
 O projeto prioriza simplicidade, baixo overhead, separação de responsabilidades e segurança dos dados armazenados.
