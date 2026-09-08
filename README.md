@@ -1109,3 +1109,9 @@ MPA
 ### Definição
 
 > **Subdrill é uma aplicação MPA baseada em HTML, JavaScript e PHP, utilizando um Front Controller central (`app.index`) combinado com Routing/Dispatcher, App Shell com Sidebar persistente, APIs PHP para operações dinâmicas, MySQL para persistência e integração com Gemini e Google Cloud TTS para geração de conteúdo. Dados sensíveis são protegidos por criptografia e as credenciais da aplicação permanecem fora do código-fonte, em variáveis de ambiente.**
+
+## Cadastro de conta
+
+Além do login, o endereço `/criar-conta` permite que uma pessoa se cadastre com
+nome, e-mail e senha. O cadastro usa `password_hash()` e, ao ser concluído,
+inicia a sessão isolada do Subdrill automaticamente.
