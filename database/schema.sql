@@ -5,3 +5,15 @@ CREATE TABLE users (
   password_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE phrases (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  frase TEXT NOT NULL,
+  idioma_frase ENUM('pt-BR', 'en-GB') NOT NULL,
+  descricao TEXT NOT NULL,
+  idioma_descricao ENUM('pt-BR', 'en-GB') NOT NULL,
+  id_user BIGINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_phrases_user FOREIGN KEY (id_user) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_phrases_user_created (id_user, created_at, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
