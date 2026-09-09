@@ -69,6 +69,16 @@ function requireAuth(): void
     if (!currentUser()) { header('Location: ' . appUrl('login')); exit; }
 }
 
+function database(): PDO
+{
+    return new PDO(
+        'mysql:host=' . env('DB_HOST') . ';dbname=' . env('DB_NAME') . ';charset=utf8mb4',
+        env('DB_USER'),
+        env('DB_PASS'),
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false]
+    );
+}
+
 function pageHeader(string $title): void
 {
     $safeTitle = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');

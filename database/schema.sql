@@ -5,3 +5,11 @@ CREATE TABLE users (
   password_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE frases (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  frase TEXT NOT NULL,
+  idioma_frase ENUM('pt-BR', 'en-GB') NOT NULL,
+  descricao TEXT NOT NULL,
+  idioma_descricao ENUM('pt-BR', 'en-GB') NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
