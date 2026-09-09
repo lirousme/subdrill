@@ -11,6 +11,10 @@ if (!hash_equals($_SESSION['csrf'] ?? '', (string) ($_POST['csrf'] ?? ''))) { ht
 $phraseId = filter_input(INPUT_POST, 'phrase_id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $exercisePhrase = trim((string) ($_POST['exercise_phrase'] ?? ''));
 $answer = trim((string) ($_POST['answer'] ?? ''));
+// The browser sends punctuation as a separate non-selectable token. Retain this
+// safeguard for requests submitted outside the exercise builder as well.
+$answer = preg_replace('/[\p{P}\p{S}]+$/u', '', $answer) ?? $answer;
+$answer = trim($answer);
 $redirect = appUrl('dashboard?view=phrase&id=' . (int) $phraseId);
 if (!$phraseId || $exercisePhrase === '' || $answer === '' || mb_strlen($exercisePhrase) > 5000 || mb_strlen($answer) > 5000) {
     $_SESSION['exercise_error'] = 'Selecione ao menos uma palavra para criar um exercício válido.';

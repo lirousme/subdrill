@@ -139,8 +139,10 @@ pageHeader('Painel');
           (() => {
             const phrase = <?= json_encode($phrase['frase'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
             const picker = document.querySelector('#word-picker'), preview = document.querySelector('#exercise-preview'), exercisePhrase = document.querySelector('#exercise-phrase'), answer = document.querySelector('#exercise-answer'), save = document.querySelector('#save-exercise');
-            const parts = phrase.match(/\s+|[^\s]+/g) || [];
-            const words = parts.map((text, index) => ({ text, index, selectable: /\S/.test(text), selected: false }));
+            // Keep punctuation separate from words so a final full stop remains in
+            // the exercise, rather than becoming part of the saved answer.
+            const parts = phrase.match(/\s+|[\p{L}\p{M}\p{N}]+(?:['’][\p{L}\p{M}\p{N}]+)*|[^\s]/gu) || [];
+            const words = parts.map((text, index) => ({ text, index, selectable: /^[\p{L}\p{M}\p{N}]/u.test(text), selected: false }));
             const update = () => { const selected = words.filter(part => part.selected); const masked = words.map(part => part.selected ? '_' : part.text).join(''); preview.textContent = selected.length ? masked : 'Selecione uma ou mais palavras acima.'; exercisePhrase.value = selected.length ? masked : ''; answer.value = selected.map(part => part.text).join(' '); save.disabled = !selected.length; };
             words.forEach(part => { if (!part.selectable) return; const button = document.createElement('button'); button.type = 'button'; button.className = 'word-token'; button.textContent = part.text; button.addEventListener('click', () => { part.selected = !part.selected; button.classList.toggle('is-selected', part.selected); update(); }); picker.append(button); });
           })();
