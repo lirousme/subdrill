@@ -17,3 +17,13 @@ CREATE TABLE phrases (
   CONSTRAINT fk_phrases_user FOREIGN KEY (id_user) REFERENCES users(id) ON DELETE CASCADE,
   INDEX idx_phrases_user_created (id_user, created_at, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE exercises (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  id_phrase BIGINT UNSIGNED NOT NULL,
+  frase_exercicio TEXT NOT NULL,
+  resposta TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_exercises_phrase FOREIGN KEY (id_phrase) REFERENCES phrases(id) ON DELETE CASCADE,
+  INDEX idx_exercises_phrase_created (id_phrase, created_at, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
