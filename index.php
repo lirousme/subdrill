@@ -7,6 +7,16 @@ $base = appBasePath();
 if ($base && ($path === $base || str_starts_with($path, $base . '/'))) $path = substr($path, strlen($base)) ?: '/';
 $path = '/' . ltrim($path, '/');
 
+// Apache normally serves files in assets/ directly. Keep the stylesheet
+// available when a host sends every request to the front controller instead.
+// This ensures the response has the CSS MIME type rather than a 404 HTML page.
+if ($path === '/assets/css/app.css') {
+    header('Content-Type: text/css; charset=UTF-8');
+    header('Cache-Control: public, max-age=3600');
+    readfile(__DIR__ . '/assets/css/app.css');
+    exit;
+}
+
 switch ($path) {
     case '/': case '/login': requireGuest(); require __DIR__ . '/pages/login.php'; break;
     case '/criar-conta': requireGuest(); require __DIR__ . '/pages/register.php'; break;
