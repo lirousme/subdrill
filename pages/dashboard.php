@@ -16,7 +16,8 @@ function dashboardUrl(string $view, array $parameters = []): string
 
 $phrases = [];
 $phrase = null;
-$exercises = [];
+$gameExercise = null;
+$gameScore = 0;
 $totalPhrases = 0;
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 10;
@@ -38,6 +39,14 @@ try {
         $phrases = $statement->fetchAll();
     }
 
+    if ($view === 'play') {
+        $scoreStatement = $pdo->prepare('SELECT score FROM user_game_scores WHERE id_user = :user_id LIMIT 1');
+        $scoreStatement->execute(['user_id' => $user['id']]);
+        $gameScore = (int) ($scoreStatement->fetchColumn() ?: 0);
+        $gameStatement = $pdo->query('SELECT exercises.id, exercises.frase_exercicio, phrases.frase, phrases.descricao FROM exercises INNER JOIN phrases ON phrases.id = exercises.id_phrase ORDER BY RAND() LIMIT 1');
+        $gameExercise = $gameStatement->fetch();
+    }
+
     if ($view === 'phrase') {
         $phraseId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if (!$phraseId) {
@@ -49,9 +58,6 @@ try {
             if (!$phrase) {
                 $error = 'Frase não encontrada ou sem permissão de acesso.';
             } else {
-                $exerciseStatement = $pdo->prepare('SELECT id, frase_exercicio, resposta FROM exercises WHERE id_phrase = :phrase_id ORDER BY created_at DESC, id DESC');
-                $exerciseStatement->execute(['phrase_id' => $phrase['id']]);
-                $exercises = $exerciseStatement->fetchAll();
             }
         }
     }
@@ -74,8 +80,25 @@ pageHeader('Painel');
   </aside>
   <main class="app-content">
     <?php if ($view === 'play'): ?>
-      <section class="content-heading"><p class="eyebrow">SUBSTITUTION DRILL</p><h1>Jogar</h1><p>Em breve, pratique suas frases com exercícios de substituição.</p></section>
-      <section class="empty-state"><span aria-hidden="true">◎</span><h2>O jogo está a caminho.</h2><p>Enquanto isso, adicione frases para montar sua próxima sessão de treino.</p><a class="button" href="<?= htmlspecialchars(dashboardUrl('new')) ?>">Adicionar uma frase <span>→</span></a></section>
+      <section class="game-page">
+        <header class="game-header"><div><p class="eyebrow">SUBSTITUTION DRILL</p><h1>Hora de jogar.</h1><p>Observe, complete e acumule pontos.</p></div><div class="score-card" aria-label="Sua pontuação"><span>SEUS PONTOS</span><strong id="game-score"><?= $gameScore ?></strong><small>+1 ao acertar · −1 ao errar</small></div></header>
+        <?php if (!$gameExercise): ?>
+          <section class="empty-state game-empty"><span aria-hidden="true">✦</span><h2>Prepare o primeiro desafio.</h2><p>Crie exercícios nas frases da biblioteca para começar a jogar.</p><a class="button" href="<?= htmlspecialchars(dashboardUrl('phrases')) ?>">Ir para frases <span>→</span></a></section>
+        <?php else: ?>
+          <section class="game-arena" id="game-arena">
+            <div class="game-orb orb-a" aria-hidden="true"></div><div class="game-orb orb-b" aria-hidden="true"></div>
+            <div class="game-step" id="game-intro"><span class="round-label">DESAFIO NOVO</span><p class="game-prompt">Leia a frase e guarde cada palavra.</p><blockquote class="game-source">“<?= nl2br(htmlspecialchars($gameExercise['frase'])) ?>”</blockquote><p class="game-description"><?= nl2br(htmlspecialchars($gameExercise['descricao'])) ?></p><button class="button game-start" type="button" id="start-game">Estou pronto <span>→</span></button></div>
+            <div class="game-step" id="game-question" hidden><span class="round-label">AGORA É A SUA VEZ</span><p class="game-instruction">PREENCHA A LACUNA DE ACORDO COM A FRASE ANTERIOR</p><p class="game-exercise"><?= nl2br(htmlspecialchars($gameExercise['frase_exercicio'])) ?></p><p class="game-description"><?= nl2br(htmlspecialchars($gameExercise['descricao'])) ?></p><form id="game-answer-form" class="game-answer-form"><label for="game-answer">Sua resposta</label><div><input id="game-answer" name="answer" type="text" required autocomplete="off" autofocus><button class="button" type="submit">Conferir <span>→</span></button></div></form></div>
+            <div class="game-step game-win" id="game-win" hidden><span aria-hidden="true" class="win-icon">★</span><p class="round-label">ACERTOU!</p><h2>Mandou bem!</h2><p>Você completou a frase corretamente e ganhou 1 ponto.</p><a class="button" href="<?= htmlspecialchars(dashboardUrl('play')) ?>">Próximo desafio <span>→</span></a></div><output id="game-feedback" class="game-feedback" aria-live="assertive"></output>
+          </section>
+          <script>
+            (() => {
+              const intro = document.querySelector('#game-intro'), question = document.querySelector('#game-question'), win = document.querySelector('#game-win'), start = document.querySelector('#start-game'), form = document.querySelector('#game-answer-form'), input = document.querySelector('#game-answer'), feedback = document.querySelector('#game-feedback'), score = document.querySelector('#game-score'), arena = document.querySelector('#game-arena');
+              start.addEventListener('click', () => { intro.hidden = true; question.hidden = false; input.focus(); });
+              form.addEventListener('submit', async event => { event.preventDefault(); const button = form.querySelector('button'); button.disabled = true; feedback.textContent = ''; try { const response = await fetch(<?= json_encode(appUrl('api/game/answer.php')) ?>, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ csrf: <?= json_encode(csrfToken()) ?>, exercise_id: <?= (int) $gameExercise['id'] ?>, answer: input.value }) }); const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Não foi possível conferir a resposta.'); score.textContent = result.score; if (result.correct) { question.hidden = true; win.hidden = false; arena.classList.add('is-correct'); } else { feedback.textContent = 'Quase! Você perdeu 1 ponto. Veja a frase mais uma vez e tente novamente.'; feedback.className = 'game-feedback is-wrong'; arena.classList.remove('is-wrong'); void arena.offsetWidth; arena.classList.add('is-wrong'); intro.hidden = false; question.hidden = true; input.value = ''; } } catch (error) { feedback.textContent = error.message; feedback.className = 'game-feedback is-wrong'; } finally { button.disabled = false; } });
+            })();
+          </script>
+        <?php endif; ?>
     <?php elseif ($view === 'new'): ?>
       <section class="content-heading"><p class="eyebrow">BIBLIOTECA</p><h1>Nova frase</h1><p>Cadastre uma frase e sua descrição para usar nos seus treinos.</p></section>
       <section class="content-card form-card">
@@ -100,10 +123,6 @@ pageHeader('Painel');
             <div class="form-actions"><a href="<?= htmlspecialchars(dashboardUrl('phrases')) ?>">Cancelar</a><button class="button" type="submit" id="save-exercise" disabled>Salvar exercício <span>→</span></button></div>
           </form>
         </section>
-        <section class="saved-exercises" aria-labelledby="saved-exercises-title"><div class="section-title"><p class="eyebrow">PRÁTICA</p><h2 id="saved-exercises-title">Exercícios salvos</h2></div>
-          <?php if ($success): ?><div class="notice" role="status"><?= htmlspecialchars($success) ?></div><?php endif; ?>
-          <?php if (!$exercises): ?><p class="muted">Nenhum exercício para esta frase ainda.</p><?php else: ?><div class="exercise-list"><?php foreach ($exercises as $exercise): ?><article class="saved-exercise"><p><?= nl2br(htmlspecialchars($exercise['frase_exercicio'])) ?></p><form class="answer-form" data-answer="<?= htmlspecialchars($exercise['resposta'], ENT_QUOTES) ?>"><label>Digite a resposta<input type="text" required autocomplete="off" aria-label="Resposta do exercício <?= (int) $exercise['id'] ?>"></label><button type="submit">Conferir</button><output class="answer-feedback" aria-live="polite"></output></form></article><?php endforeach; ?></div><?php endif; ?>
-        </section>
         <script>
           (() => {
             const phrase = <?= json_encode($phrase['frase'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -112,7 +131,6 @@ pageHeader('Painel');
             const words = parts.map((text, index) => ({ text, index, selectable: /\S/.test(text), selected: false }));
             const update = () => { const selected = words.filter(part => part.selected); const masked = words.map(part => part.selected ? '_' : part.text).join(''); preview.textContent = selected.length ? masked : 'Selecione uma ou mais palavras acima.'; exercisePhrase.value = selected.length ? masked : ''; answer.value = selected.map(part => part.text).join(''); save.disabled = !selected.length; };
             words.forEach(part => { if (!part.selectable) return; const button = document.createElement('button'); button.type = 'button'; button.className = 'word-token'; button.textContent = part.text; button.addEventListener('click', () => { part.selected = !part.selected; button.classList.toggle('is-selected', part.selected); update(); }); picker.append(button); });
-            document.querySelectorAll('.answer-form').forEach(form => form.addEventListener('submit', event => { event.preventDefault(); const expected = form.dataset.answer.trim().replace(/\s+/g, ' ').toLocaleLowerCase(); const given = form.querySelector('input').value.trim().replace(/\s+/g, ' ').toLocaleLowerCase(); const feedback = form.querySelector('.answer-feedback'); const correct = given === expected; feedback.textContent = correct ? 'Correto! Muito bem.' : 'Ainda não. Tente novamente.'; feedback.className = 'answer-feedback ' + (correct ? 'is-correct' : 'is-incorrect'); }));
           })();
         </script>
       <?php endif; ?>
