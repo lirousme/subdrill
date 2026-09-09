@@ -19,7 +19,14 @@ try {
     $exercise->execute(['id' => $exerciseId]);
     $expected = $exercise->fetchColumn();
     if ($expected === false) { http_response_code(404); echo json_encode(['message' => 'Desafio não encontrado.']); exit; }
-    $normalise = static fn(string $value): string => mb_strtolower(preg_replace('/\s+/u', ' ', trim($value)) ?? '', 'UTF-8');
+    $normalise = static function (string $value): string {
+        $value = mb_strtolower(preg_replace('/\s+/u', ' ', trim($value)) ?? '', 'UTF-8');
+        if (class_exists('Normalizer')) {
+            $value = Normalizer::normalize($value, Normalizer::FORM_D) ?: $value;
+            $value = preg_replace('/\p{Mn}+/u', '', $value) ?? $value;
+        }
+        return strtr($value, ['á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a', 'å' => 'a', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e', 'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i', 'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o', 'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ç' => 'c', 'ñ' => 'n']);
+    };
     $correct = hash_equals($normalise((string) $expected), $normalise($answer));
     $change = $correct ? 1 : -1;
     $score = $pdo->prepare('INSERT INTO user_game_scores (id_user, score) VALUES (:user_id, :change) ON DUPLICATE KEY UPDATE score = score + :update_change');

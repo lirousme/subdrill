@@ -24,9 +24,15 @@ try {
     if (!$phrase->fetch()) {
         $_SESSION['exercise_error'] = 'Frase não encontrada ou sem permissão de acesso.';
     } else {
-        $insert = $pdo->prepare('INSERT INTO exercises (id_phrase, frase_exercicio, resposta) VALUES (:phrase_id, :exercise_phrase, :answer)');
-        $insert->execute(['phrase_id' => $phraseId, 'exercise_phrase' => $exercisePhrase, 'answer' => $answer]);
-        $_SESSION['exercise_success'] = 'Exercício salvo. Agora tente respondê-lo abaixo.';
+        $duplicate = $pdo->prepare('SELECT id FROM exercises WHERE id_phrase = :phrase_id AND frase_exercicio = :exercise_phrase LIMIT 1');
+        $duplicate->execute(['phrase_id' => $phraseId, 'exercise_phrase' => $exercisePhrase]);
+        if ($duplicate->fetch()) {
+            $_SESSION['exercise_error'] = 'Este exercício já foi criado para a frase selecionada.';
+        } else {
+            $insert = $pdo->prepare('INSERT INTO exercises (id_phrase, frase_exercicio, resposta) VALUES (:phrase_id, :exercise_phrase, :answer)');
+            $insert->execute(['phrase_id' => $phraseId, 'exercise_phrase' => $exercisePhrase, 'answer' => $answer]);
+            $_SESSION['exercise_success'] = 'Exercício salvo com sucesso.';
+        }
     }
 } catch (PDOException $exception) {
     error_log('Subdrill exercise creation database error: ' . $exception->getMessage());

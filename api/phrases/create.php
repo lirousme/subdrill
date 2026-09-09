@@ -45,7 +45,16 @@ if (mb_strlen($phrase) > 5000 || mb_strlen($description) > 5000) {
 }
 
 try {
-    $statement = database()->prepare(
+    $pdo = database();
+    $duplicate = $pdo->prepare('SELECT id FROM phrases WHERE id_user = :user_id AND frase = :phrase LIMIT 1');
+    $duplicate->execute(['user_id' => $user['id'], 'phrase' => $phrase]);
+    if ($duplicate->fetch()) {
+        $_SESSION['phrase_error'] = 'Esta frase já está cadastrada na sua biblioteca.';
+        header('Location: ' . appUrl('dashboard?view=new'));
+        exit;
+    }
+
+    $statement = $pdo->prepare(
         'INSERT INTO phrases (frase, idioma_frase, descricao, idioma_descricao, id_user)
          VALUES (:phrase, :phrase_language, :description, :description_language, :user_id)'
     );
