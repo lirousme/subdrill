@@ -16,6 +16,7 @@ function dashboardUrl(string $view, array $parameters = []): string
 
 $phrases = [];
 $phrase = null;
+$existingExercises = [];
 $gameExercise = null;
 $gameScore = 0;
 $totalPhrases = 0;
@@ -58,6 +59,9 @@ try {
             if (!$phrase) {
                 $error = 'Frase não encontrada ou sem permissão de acesso.';
             } else {
+                $exercises = $pdo->prepare('SELECT id, frase_exercicio, resposta, created_at FROM exercises WHERE id_phrase = :phrase_id ORDER BY created_at DESC, id DESC');
+                $exercises->execute(['phrase_id' => $phrase['id']]);
+                $existingExercises = $exercises->fetchAll();
             }
         }
     }
@@ -123,13 +127,21 @@ pageHeader('Painel');
             <div class="form-actions"><a href="<?= htmlspecialchars(dashboardUrl('phrases')) ?>">Cancelar</a><button class="button" type="submit" id="save-exercise" disabled>Salvar exercício <span>→</span></button></div>
           </form>
         </section>
+        <section class="saved-exercises" aria-labelledby="saved-exercises-title">
+          <div class="section-title"><p class="eyebrow">BIBLIOTECA DA FRASE</p><h2 id="saved-exercises-title">Exercícios já criados</h2></div>
+          <?php if (!$existingExercises): ?>
+            <div class="empty-saved-exercises"><p>Nenhum exercício criado para esta frase ainda.</p></div>
+          <?php else: ?>
+            <div class="exercise-list"><?php foreach ($existingExercises as $exercise): ?><article class="saved-exercise"><span class="phrase-id">Exercício #<?= (int) $exercise['id'] ?></span><p><?= nl2br(htmlspecialchars($exercise['frase_exercicio'])) ?></p><span class="description-language">Resposta: <?= htmlspecialchars($exercise['resposta']) ?></span></article><?php endforeach; ?></div>
+          <?php endif; ?>
+        </section>
         <script>
           (() => {
             const phrase = <?= json_encode($phrase['frase'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
             const picker = document.querySelector('#word-picker'), preview = document.querySelector('#exercise-preview'), exercisePhrase = document.querySelector('#exercise-phrase'), answer = document.querySelector('#exercise-answer'), save = document.querySelector('#save-exercise');
             const parts = phrase.match(/\s+|[^\s]+/g) || [];
             const words = parts.map((text, index) => ({ text, index, selectable: /\S/.test(text), selected: false }));
-            const update = () => { const selected = words.filter(part => part.selected); const masked = words.map(part => part.selected ? '_' : part.text).join(''); preview.textContent = selected.length ? masked : 'Selecione uma ou mais palavras acima.'; exercisePhrase.value = selected.length ? masked : ''; answer.value = selected.map(part => part.text).join(''); save.disabled = !selected.length; };
+            const update = () => { const selected = words.filter(part => part.selected); const masked = words.map(part => part.selected ? '_' : part.text).join(''); preview.textContent = selected.length ? masked : 'Selecione uma ou mais palavras acima.'; exercisePhrase.value = selected.length ? masked : ''; answer.value = selected.map(part => part.text).join(' '); save.disabled = !selected.length; };
             words.forEach(part => { if (!part.selectable) return; const button = document.createElement('button'); button.type = 'button'; button.className = 'word-token'; button.textContent = part.text; button.addEventListener('click', () => { part.selected = !part.selected; button.classList.toggle('is-selected', part.selected); update(); }); picker.append(button); });
           })();
         </script>
